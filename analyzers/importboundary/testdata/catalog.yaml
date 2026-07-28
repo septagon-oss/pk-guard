@@ -1,0 +1,5 @@
+modulePrefix: github.com/acme/modules
+sharedPackages: [ports]
+modules:
+  - id: billing
+  - id: user_management

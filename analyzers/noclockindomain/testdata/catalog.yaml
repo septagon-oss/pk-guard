@@ -1,0 +1,4 @@
+modulePrefix: github.com/acme/modules
+modules:
+  - id: clocky_management
+  - id: legacy_clock_management

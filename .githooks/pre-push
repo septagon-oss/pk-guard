@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fast, bounded gate: the full suite is small enough to run whole.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+make verify

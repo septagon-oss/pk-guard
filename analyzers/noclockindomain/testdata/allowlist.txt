@@ -1,0 +1,4 @@
+# Test allowlist for the noclockindomain analyzer.
+# Same grammar as the production allowlists:
+#   rule:subject|owner=@team|until=YYYY-MM-DD|reason=free text
+clock_in_domain:legacy_clock_management|owner=@platform|until=2099-12-31|reason=test fixture for ratcheted legacy debt

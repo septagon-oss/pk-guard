@@ -1,0 +1,2 @@
+# file-suffix -> target module exceptions, one per line
+user_management/features/users/legacy.go -> billing
