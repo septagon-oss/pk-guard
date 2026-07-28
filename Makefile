@@ -3,6 +3,10 @@
 TMPDIRS := .tmp-go-tmp
 export GOTMPDIR := $(CURDIR)/.tmp-go-tmp
 export TMPDIR := $(CURDIR)/.tmp-go-tmp
+# Standalone module: never resolve through an enclosing Go workspace. Inside
+# the PlatformKit estate a go.work exists two directories up and does not
+# list this repo; without this pin every make target fails there.
+export GOWORK := off
 
 $(TMPDIRS):
 	@mkdir -p $(TMPDIRS)
