@@ -168,9 +168,17 @@ func loadImportAllowlist(path string) ([]importException, error) {
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("allowlist %q: invalid line %q (expected `file -> module`)", path, line)
 		}
+		fileSuffix := strings.TrimSpace(parts[0])
+		targetModule := strings.TrimSpace(parts[1])
+		if fileSuffix == "" || targetModule == "" {
+			// An empty suffix would HasSuffix-match every file in the tree —
+			// a one-character typo must not become a repository-wide bypass.
+			return nil, fmt.Errorf(
+				"allowlist %q: invalid line %q (both file suffix and module are required)", path, line)
+		}
 		entries = append(entries, importException{
-			fileSuffix:   strings.TrimSpace(parts[0]),
-			targetModule: strings.TrimSpace(parts[1]),
+			fileSuffix:   fileSuffix,
+			targetModule: targetModule,
 		})
 	}
 	if err := scanner.Err(); err != nil {

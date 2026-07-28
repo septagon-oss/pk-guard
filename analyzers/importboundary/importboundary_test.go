@@ -5,6 +5,7 @@ package importboundary_test
 // cross-module path is rejected, and allowlisted files are exempt.
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -39,4 +40,17 @@ func TestAnalyzer(t *testing.T) {
 		"github.com/acme/modules/user_management/features/users",
 		"github.com/acme/modules/billing/features/invoices",
 	)
+}
+
+// Codex-review regression: an allowlist line with an empty file suffix
+// would HasSuffix-match every file — a typo becoming a repo-wide bypass.
+func TestAllowlistRejectsEmptyFields(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(path, []byte(" -> billing\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := importboundary.LoadImportAllowlistForTest(path); err == nil {
+		t.Fatal("an allowlist entry with an empty file suffix must be rejected")
+	}
 }

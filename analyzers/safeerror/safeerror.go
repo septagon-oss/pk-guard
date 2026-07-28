@@ -7,10 +7,15 @@
 //
 //	huma.NewError(status, err.Error())
 //	huma.Error400BadRequest(err.Error())
-//	apperrors.Error404NotFound(err.Error())
 //	... any function matching Error{NNN}{Name}(err.Error(), ...)
 //
-// Suggested fix: use apperrors.SafeError(http.StatusXxx, err) instead.
+// Suggested fix: construct a safe, client-facing error (a message you would
+// show a stranger) and keep the raw error server-side.
+//
+// The constructor packages checked default to huma; add your own error
+// package with -safeerror.errorpkgs=<suffix>[,<suffix>...] (import-path
+// suffixes; any function named Error{NNN}* or NewError in them is treated
+// as a client-facing constructor).
 //
 // # Silent-failure checks
 //
@@ -53,11 +58,24 @@ const humaNewError = "NewError"
 // Matches: Error400BadRequest, Error404NotFound, Error500InternalServerError, etc.
 const errorFuncPrefix = "Error"
 
-// qualifiedPackageSuffixes are the import path suffixes we care about.
-// We match any package whose path ends with one of these.
+// qualifiedPackageSuffixes are the import path suffixes whose error
+// constructors are client-facing. huma is the default; consumers append
+// their own error packages via -safeerror.errorpkgs.
 var qualifiedPackageSuffixes = []string{
 	"danielgtaylor/huma/v2",
-	"platformkit-backend-kit/app/errors",
+}
+
+func init() {
+	Analyzer.Flags.Func("errorpkgs",
+		"comma-separated import-path suffixes whose Error*/NewError constructors are client-facing",
+		func(v string) error {
+			for _, s := range strings.Split(v, ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					qualifiedPackageSuffixes = append(qualifiedPackageSuffixes, s)
+				}
+			}
+			return nil
+		})
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -113,7 +131,7 @@ func run(pass *analysis.Pass) (any, error) {
 		if isErrorMethodCall(pass, call.Args[msgArgIndex]) {
 			pass.Reportf(
 				call.Pos(),
-				"raw err.Error() passed to %s leaks internal details to API clients; use apperrors.SafeError(status, err) instead",
+				"raw err.Error() passed to %s leaks internal details to API clients; construct a safe client-facing message and keep the raw error server-side",
 				funcName,
 			)
 			return

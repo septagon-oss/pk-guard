@@ -180,3 +180,36 @@ modules:
 		t.Errorf("Resolver should return identical Catalog instance on repeated Get")
 	}
 }
+
+// Codex-review regression: a nested module ID would load fine and then
+// never match ModuleForPackage, silently blinding every topology guard.
+func TestNestedModuleIDsAreRejected(t *testing.T) {
+	path := writeCatalog(t, `
+modulePrefix: github.com/acme/m
+modules:
+  - id: commerce/billing
+`)
+	if _, err := modulecatalog.Load(path, ""); err == nil {
+		t.Fatal("a module id containing '/' must be rejected at load, not silently ignored at match time")
+	}
+}
+
+// Codex-review regression: an explicitly empty sharedPackages list means
+// "nothing is shared" and must not be conflated with an omitted field.
+func TestExplicitlyEmptySharedPackagesGrantsNothing(t *testing.T) {
+	path := writeCatalog(t, `
+modulePrefix: github.com/acme/m
+sharedPackages: []
+modules:
+  - id: alpha
+`)
+	cat, err := modulecatalog.Load(path, "")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	for _, rel := range []string{"ports", "internal", "testutil"} {
+		if cat.IsShared(rel) {
+			t.Errorf("explicitly empty sharedPackages must not grant default %q", rel)
+		}
+	}
+}

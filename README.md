@@ -62,23 +62,36 @@ func main() {
 }
 ```
 
-The extension contract: **consumers may tighten freely, but loosening a
-guard happens only through that guard's own allowlist or justification
-comment** — written down, with a reason, visible in review. There is no flag
-to turn an analyzer off wholesale; a guard you can switch off in build
-configuration is a guard that silently stopped running.
+The extension contract: **consumers may tighten freely; loosening is
+designed to go through each guard's own allowlist or justification
+comment** — written down, with a reason, visible in review.
 
-## Allowlists ratchet
+## Exceptions are written down
 
-Analyzers that support exceptions take an allowlist file
-(`-<analyzer>.allowlist=<path>`) using a shared grammar:
+Every escape hatch is explicit, local, and reviewable — but the grammar is
+per-analyzer:
 
-```
-rule:subject|owner=team-payments|until=2026-12-31|reason=legacy clock injection pending
-```
+- `safeerror`: the exact `// justified: <reason>` comment on the flagged
+  line (or the line above). No file-level suppression exists.
+- `noclockindomain`: `-noclockindomain.allowlist=<path>` with expiring
+  entries — `clock_in_domain:billing|owner=team-payments|until=2026-12-31|reason=...`.
+- `importboundary`: `-importboundary.allowlist=<path>` with
+  `file-suffix -> target_module` lines; both sides are required, and an
+  empty suffix is rejected rather than becoming a repo-wide match.
 
-Existing offenders stay green; new offenders are blocked. Shrinking the file
-is the only way it changes in a healthy repository.
+Existing offenders stay green; new offenders are blocked. Shrinking an
+allowlist is the only way it changes in a healthy repository.
+
+## Two properties to know before relying on it
+
+- **The catalog is the scope.** A module directory absent from the catalog
+  is invisible to the topology analyzers — they cannot guard what is not
+  declared. Generate the catalog from your module registry, or pair it with
+  a completeness check, so a new module cannot be forgotten.
+- **Skipping is visible, not impossible.** The multichecker driver exposes
+  `-NAME=false` per analyzer. pk-guard adds no quieter off-switch: disabling
+  a guard is always legible in the invocation your hooks and CI run, which
+  is where review should look.
 
 ## Status
 

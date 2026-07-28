@@ -82,7 +82,7 @@ func loadCatalog() (*modulecatalog.Catalog, error) {
 }
 
 // ruleClockInDomain is the allowlist rule key. Subjects are business-module
-// names (e.g. "billing_management").
+// names (e.g. "billing").
 const ruleClockInDomain = "clock_in_domain"
 
 // timeFuncs are the time-package functions that read the wall clock.
@@ -148,13 +148,12 @@ func run(pass *analysis.Pass) (any, error) {
 			case importPath == "time" && timeFuncs[sel.Sel.Name]:
 				pass.Reportf(call.Pos(),
 					"direct time.%s() in domain service code is untestable; "+
-						"inject the shared ports.Clock (modules/platformkit-business-modules/ports/clock.go) "+
-						"and call the injected clock instead (see billing_management/features/subscriptions WithClock)",
+						"inject a clock seam and call the injected clock instead",
 					sel.Sel.Name)
 			case randPackages[importPath]:
 				pass.Reportf(call.Pos(),
 					"direct %s.%s() (%s) in domain service code is nondeterministic; "+
-						"inject randomness behind a port (mirror the ports.Clock pattern) instead",
+						"inject randomness behind a seam (mirror the injected-clock pattern) instead",
 					ident.Name, sel.Sel.Name, importPath)
 			}
 			return true

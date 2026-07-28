@@ -183,9 +183,9 @@ func Load(path, fallbackPrefix string) (*Catalog, error) {
 	if len(doc.Modules) == 0 {
 		return nil, fmt.Errorf("catalog %q declares no modules", path)
 	}
-	prefix := strings.TrimSuffix(strings.TrimSpace(doc.ModulePrefix), "/")
+	prefix := strings.TrimRight(strings.TrimSpace(doc.ModulePrefix), "/")
 	if prefix == "" {
-		prefix = strings.TrimSuffix(strings.TrimSpace(fallbackPrefix), "/")
+		prefix = strings.TrimRight(strings.TrimSpace(fallbackPrefix), "/")
 	}
 	if prefix == "" {
 		return nil, fmt.Errorf(
@@ -197,6 +197,13 @@ func Load(path, fallbackPrefix string) (*Catalog, error) {
 		if id == "" {
 			return nil, fmt.Errorf("catalog %q contains a module entry with no id", path)
 		}
+		if strings.Contains(id, "/") {
+			// Ownership resolution matches exactly one path component under
+			// the prefix; a nested ID would load fine and then never match,
+			// making the module silently invisible to every topology guard.
+			return nil, fmt.Errorf(
+				"catalog %q: module id %q must be a single path component (nested modules are not supported)", path, id)
+		}
 		ids[id] = struct{}{}
 	}
 	// Approved external (contract-only / remote) module providers have no
@@ -207,16 +214,28 @@ func Load(path, fallbackPrefix string) (*Catalog, error) {
 	// provider's contracts.
 	for _, id := range doc.ExternalModuleProviders {
 		if id = strings.TrimSpace(id); id != "" {
+			if strings.Contains(id, "/") {
+				return nil, fmt.Errorf(
+					"catalog %q: external module provider %q must be a single path component", path, id)
+			}
 			ids[id] = struct{}{}
 		}
 	}
+	// nil means "not declared" and gets the defaults; an explicitly empty
+	// list ([]) means "no shared packages" and is honored as written. The
+	// two must not be conflated: a repository that declares none shared
+	// must not silently receive the default grants.
 	sharedList := doc.SharedPackages
-	if len(sharedList) == 0 {
+	if sharedList == nil {
 		sharedList = defaultSharedPackages
 	}
 	shared := make(map[string]struct{}, len(sharedList))
 	for _, s := range sharedList {
-		if s = strings.TrimSpace(s); s != "" {
+		if s = strings.Trim(strings.TrimSpace(s), "/"); s != "" {
+			if strings.Contains(s, "/") {
+				return nil, fmt.Errorf(
+					"catalog %q: shared package %q must be a single path component (matching is by first component)", path, s)
+			}
 			shared[s] = struct{}{}
 		}
 	}
